@@ -102,6 +102,7 @@ class LightningTrainer:
         use_deepspeed: bool = False,
         max_training_time_in_secs: Optional[int] = None,
         lora_type: int = 16,
+        extra_callbacks: list[Any] = [],
         logger: Union[Logger, Iterable[Logger], bool] = True,
     ):
         self.lightning_model = TuringLightningModule(
@@ -164,7 +165,7 @@ class LightningTrainer:
                 callbacks.ModelCheckpoint(
                     dirpath=str(checkpoints_dir_path), save_on_train_epoch_end=True
                 ),
-            ]
+            ] 
 
             strategy = "auto"
             if not IS_INTERACTIVE:
@@ -173,6 +174,8 @@ class LightningTrainer:
                     if optimizer_name == "cpu_adam"
                     else "deepspeed_stage_2"
                 )
+
+            training_callbacks += extra_callbacks
 
             self.trainer = Trainer(
                 num_nodes=1,
