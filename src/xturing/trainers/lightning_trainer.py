@@ -3,7 +3,7 @@ import os
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Iterable, Optional, Union, Type, Any
+from typing import Iterable, Optional, Union, Type
 
 import pytorch_lightning as pl
 import torch
@@ -102,7 +102,7 @@ class LightningTrainer:
         use_deepspeed: bool = False,
         max_training_time_in_secs: Optional[int] = None,
         lora_type: int = 16,
-        extra_callbacks: list[Any] = [],
+        extra_callbacks = [],
         logger: Union[Logger, Iterable[Logger], bool] = True,
     ):
         self.lightning_model = TuringLightningModule(
