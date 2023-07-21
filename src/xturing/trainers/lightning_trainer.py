@@ -11,6 +11,9 @@ from deepspeed.ops.adam import DeepSpeedCPUAdam
 from pytorch_lightning import callbacks
 from pytorch_lightning.trainer.trainer import Trainer
 from pytorch_lightning.loggers import Logger
+from pytorch_lightning.utilities.types import (
+    EVAL_DATALOADERS,
+)
 
 from xturing.config import DEFAULT_DEVICE, IS_INTERACTIVE
 from xturing.datasets.base import BaseDataset
@@ -23,6 +26,7 @@ class TuringLightningModule(pl.LightningModule):
         self,
         model_engine: BaseEngine,
         train_dataset: BaseDataset,
+        val_dataset: BaseDataset,
         preprocessor: Optional[BasePreprocessor] = None,
         batch_size: int = 2,
         learning_rate: float = 5e-5,
@@ -33,6 +37,7 @@ class TuringLightningModule(pl.LightningModule):
         self.model_engine = model_engine
         self.pytorch_model = self.model_engine.model
         self.train_dataset = train_dataset
+        self.val_dataset = val_dataset
         self.preprocessor = preprocessor
 
         # Hyperparameters
@@ -72,6 +77,17 @@ class TuringLightningModule(pl.LightningModule):
 
         return self.train_dl
 
+    def val_dataloader(self):
+        self.val_dl = torch.utils.data.DataLoader(
+            self.val_dataset,
+            shuffle=True,
+            num_workers=1,
+            pin_memory=True,
+            batch_size=self.batch_size,
+        )
+
+        return self.val_dl
+
     def training_step(self, batch, batch_idx):
         loss = self.model_engine.training_step(batch)
         self.losses.append(loss.item())
@@ -80,7 +96,12 @@ class TuringLightningModule(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        return self.model_engine.validation_step(batch)
+        loss = self.model_engine.validation_step(batch)
+        self.val_losses.append(loss.item())
+        self.log("val_loss", loss.item(), prog_bar=True)
+
+    # def validation_step(self, batch, batch_idx):
+    #     return self.model_engine.validation_step(batch)
 
     def on_save_checkpoint(self, checkpoint):
         self.model_engine.save(self.saved_path)
@@ -93,6 +114,7 @@ class LightningTrainer:
         self,
         model_engine: BaseEngine,
         train_dataset: BaseDataset,
+        val_dataset: BaseDataset,
         preprocessor: BasePreprocessor,
         max_epochs: int = 3,
         batch_size: int = 2,
@@ -108,6 +130,7 @@ class LightningTrainer:
         self.lightning_model = TuringLightningModule(
             model_engine=model_engine,
             train_dataset=train_dataset,
+            val_dataset=val_dataset,
             preprocessor=preprocessor,
             batch_size=batch_size,
             learning_rate=learning_rate,
