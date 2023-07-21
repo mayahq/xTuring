@@ -27,7 +27,8 @@ class TuringLightningModule(pl.LightningModule):
         model_engine: BaseEngine,
         train_dataset: BaseDataset,
         val_dataset: BaseDataset,
-        preprocessor: Optional[BasePreprocessor] = None,
+        train_preprocessor: Optional[BasePreprocessor] = None,
+        val_preprocessor: Optional[BasePreprocessor] = None,
         batch_size: int = 2,
         learning_rate: float = 5e-5,
         optimizer_name: str = "adamw",
@@ -38,7 +39,8 @@ class TuringLightningModule(pl.LightningModule):
         self.pytorch_model = self.model_engine.model
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
-        self.preprocessor = preprocessor
+        self.train_preprocessor = train_preprocessor
+        self.val_preprocessor = val_preprocessor
 
         # Hyperparameters
         self.batch_size = batch_size
@@ -48,6 +50,7 @@ class TuringLightningModule(pl.LightningModule):
         self.saved_path = saved_path
 
         self.losses = []
+        self.val_losses = []
 
     def configure_optimizers(self):
         if self.optimizer_name == "adamw":
@@ -68,7 +71,7 @@ class TuringLightningModule(pl.LightningModule):
     def train_dataloader(self):
         self.train_dl = torch.utils.data.DataLoader(
             self.train_dataset,
-            collate_fn=self.preprocessor,
+            collate_fn=self.train_preprocessor,
             shuffle=True,
             num_workers=1,
             pin_memory=True,
@@ -80,6 +83,7 @@ class TuringLightningModule(pl.LightningModule):
     def val_dataloader(self):
         self.val_dl = torch.utils.data.DataLoader(
             self.val_dataset,
+            collate_fn=self.val_preprocessor,
             shuffle=True,
             num_workers=1,
             pin_memory=True,
@@ -115,7 +119,8 @@ class LightningTrainer:
         model_engine: BaseEngine,
         train_dataset: BaseDataset,
         val_dataset: BaseDataset,
-        preprocessor: BasePreprocessor,
+        train_preprocessor: BasePreprocessor,
+        val_preprocessor: BasePreprocessor,
         max_epochs: int = 3,
         batch_size: int = 2,
         learning_rate: float = 1e-3,
@@ -131,7 +136,8 @@ class LightningTrainer:
             model_engine=model_engine,
             train_dataset=train_dataset,
             val_dataset=val_dataset,
-            preprocessor=preprocessor,
+            train_preprocessor=train_preprocessor,
+            val_preprocessor=val_preprocessor,
             batch_size=batch_size,
             learning_rate=learning_rate,
             optimizer_name=optimizer_name,

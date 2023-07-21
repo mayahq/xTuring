@@ -112,17 +112,27 @@ class CausalEngine(BaseEngine):
         return loss
 
     def validation_step(self, batch):
-        metrics = evaluate.load("accuracy")
-        outputs = self.model(
-            input_ids=batch["input_ids"],
-            attention_mask=batch.get("attention_mask", None),
-        )
+        if self.load_8bit:
+            with torch.autocast("cuda", dtype=torch.float16):
+                outputs = self.model(
+                    input_ids=batch["input_ids"],
+                    attention_mask=batch.get("attention_mask", None),
+                )
+        else:
+            outputs = self.model(
+                input_ids=batch["input_ids"],
+                attention_mask=batch.get("attention_mask", None),
+            )
 
-        logits = outputs.get("logits")
-        preds = torch.argmax(logits, -1)
-        acc = metrics.compute(preds, batch["labels"])
+        if "label_mask" in batch:
+            loss = self.loss_fct(
+                outputs.get("logits"), batch["targets"], mask=batch["label_mask"]
+            )
+        else:
+            loss = self.loss_fct(outputs.get("logits"), batch["targets"])
 
-        return acc
+        return loss
+
 
     def save(self, saving_path: Union[str, Path]):
         self.model.save_pretrained(saving_path)
