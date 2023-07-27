@@ -65,6 +65,7 @@ class TuringLightningModule(pl.LightningModule):
             optimizer = DeepSpeedCPUAdam(
                 self.pytorch_model.parameters(), lr=self.learning_rate
             )
+        print(self.optimizer_name)
         lr_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer=optimizer)
         return [optimizer], [lr_scheduler]
 
@@ -197,13 +198,6 @@ class LightningTrainer:
             ] 
 
             strategy = "auto"
-            if not IS_INTERACTIVE:
-                strategy = (
-                    "deepspeed_stage_2_offload"
-                    if optimizer_name == "cpu_adam"
-                    else "deepspeed_stage_2"
-                )
-
             training_callbacks += extra_callbacks
 
             self.trainer = Trainer(
